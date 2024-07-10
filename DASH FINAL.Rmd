@@ -1,0 +1,504 @@
+---
+title: "Análisis de la tasa de deserción en educación secundaria a nivel de provincia durante el año 2017"
+author: Jade Vidal Camacho
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+1. Introducción {data-icon="fa-signal"}
+===================================== 
+
+Column {data-width= 600}
+-----------------------------------------------------------------------
+
+```{r}
+library(rio)
+data=import("basededatosF.csv")
+```
+
+```{r}
+data$HOGARES_INTERNET = gsub(" ", "", data$HOGARES_INTERNET)
+data$CASOS_DEFENSORIAMUNI = gsub(" ", "", data$CASOS_DEFENSORIAMUNI)
+data$RET_SEC = gsub(",", ".", data$RET_SEC)
+data$ALUM_MATRIC_SEC = gsub(" ", "", data$ALUM_MATRIC_SEC)
+```
+
+```{r}
+data[c(4:7)] = lapply(data[c(4:7)], as.numeric)
+```
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+data <- data %>% rename(PROV_=`PROVINCIA
+`)
+data <- data %>% rename(PROVINCIA=PROV_)
+```
+
+
+```{r}
+library(ggplot2)
+ggplot(data, aes(x = PROVINCIA, y = RET_SEC)) +
+  geom_point() +
+  labs(x = "Provincias", y = "Tasa de Deserción", title = "Tasa de Deserción por Provincias")
+```
+
+
+
+```{r}
+library(tmap) 
+library(sf) 
+library(pryr) 
+library(readr) 
+library(base) 
+library(reshape2) 
+library(plyr) 
+library(dplyr) 
+library(readxl)
+library(shinyMobile)
+```
+
+
+
+
+
+Column {data-width= 400}
+-----------------------------------------------------------------------
+
+### Introducción
+
+* **Problema observado:** 
+
+Según Benítez (2014), “la educación permite actualizar nuestras potencialidades, desarrollar habilidades que nos permiten ser mejores. Es un derecho humano, en tanto es esencial para vivir dignamente. Es, además, un medio para la realización de otros derechos” (como se cita en Reátegui y Salas, 2019). En consecuencia, los Estados tienen la obligación de proporcionar una educación de calidad a todos sus ciudadanos; sin embargo, en el caso de América Latina, se presentan “brechas de equidad en el cumplimiento del derecho a la educación, las cuales son mayores en la secundaria alta” (López, 2019, p. 12). Aquello se ve reflejado en la tasa de deserción escolar entendido como el abandono permanente por parte del estudiante de las instituciones educativas. 
+
+En el caso de Perú, según Infobae (2023), “el Minedu expuso, en 2021, que la tasa de deserción escolar en el Perú llegó al 6,3%”; así mismo, “una encuesta del Instituto Nacional de Estadística e Informática, en ese mismo año, dejó entrever que 22 de cada 100 jóvenes entre 17 y 18 años no habían finalizado su educación secundaria”. Por ello, el presente ensayo se encargará de analizar estadísticamente la tasa de deserción en educación secundaria a nivel de provincia durante el año 2017 con el objetivo de encontrar los factores que influyen en ella. De esa manera, a raíz de los resultados de dicho análisis, el Estado peruano pueda entender el problema de fondo y así implementar eficientes políticas públicas. 
+
+Para dicho análisis se recurrirá al total de casos atendidos en la Defensoría Municipal del Niño y el Adolescente, el número de habitantes en situación de pobreza, la cantidad de hogares con acceso a Internet y el número de alumnos matriculados en el sistema educativo básico regular nivel secundario.
+
+* **Pregunta de investigación:**
+
+¿Qué factores influyen en la tasa de deserción en educación secundaria a nivel de provincia durante el año 2017?
+
+* **Hipótesis:**
+
+La tasa de deserción en educación secundaria a nivel de provincia durante el año 2017 se encuentra afectada por el total de casos atendidos en la Defensoría Municipal del Niño y el Adolescente, el número de habitantes en situación de pobreza, la cantidad de hogares con acceso a Internet y el número de alumnos matriculados en el sistema educativo básico regular nivel secundario.
+
+
+2. Variable central {data-icon="fa-signal"}
+===================================== 
+
+Column {data-width=600} {.tabset}
+-----------------------------------------------------------------------
+
+###  Histograma del porcentaje de retirados en educación secundaria - variable cuantitativa continua
+
+```{r}
+
+library(ggplot2)
+
+HISTOGRAMAVC= ggplot(data, aes(x=RET_SEC))+
+  geom_histogram()+
+  scale_x_continuous(limits = c(0,8)) +
+  xlab("% de retirados en educación secundaria")+
+  ylab("Frecuencia")+ ggtitle("Histograma del porcentaje de retirados en educación secundaria según el censo del 2017") + geom_vline(xintercept = mean(data$RET_SEC) ,linetype="dashed", color="red",size=1) + theme() 
+
+HISTOGRAMAVC
+```
+
+Column {data-width=400} {.tabset}
+-----------------------------------------------------------------------
+
+### Tabla de frecuencias
+
+```{r}
+# Tabla de frecuencias
+TF_VC=summary(data$RET_SEC)
+TF_VC
+```
+* **Histograma:** 
+
+En promedio, en el Perú el 2.84% de personas desertaron secundaria.En el 50% de provincias, el porcentaje de personas que desertaron  secundaria varía entre 0.5 y 2.6%.
+
+3. Correlación (VD vs VIs) {data-icon="fa-signal"}
+===================================== 
+
+Column {data-width=750} {.tabset}
+-----------------------------------------------------------------------
+
+### CASOS_DEFENSORIAMUNI
+```{r}
+base1=ggplot(data=data, aes(x=CASOS_DEFENSORIAMUNI, y=RET_SEC))
+scatter1 = base1 + geom_point(colour="blue")
+library(ggrepel)
+scatterText1 = scatter1 + geom_text_repel(aes(label=PROVINCIA),size=3)+labs(x="Casos atendidos en la DEMUNA", 
+       y="% de retirados en educación secundaria")+ggtitle("Correlación entre % de retirados en educación secundaria y n° de Casos atendidos en la DEMUNA")
+scatterText1 + scale_x_continuous(limits = c(0, 18000))
+
+```
+
+### HABIT_EN_POBREZA 
+
+```{r}
+base2=ggplot(data=data, aes(x=HABIT_EN_POBREZA, y=RET_SEC))
+scatter2 = base2 + geom_point(colour="red")
+scatterText2 = scatter2 + geom_text_repel(aes(label=PROVINCIA),size=3)+labs(x="Número de habitantes en situación de pobreza", 
+       y="% de retirados en educación secundaria")+ggtitle("Correlación entre % de retirados en educación secundaria y n°de habitantes en situación de pobreza")
+scatterText2
+```
+
+
+### HOGARES_INTERNET
+
+```{r}
+base3=ggplot(data=data, aes(x=HOGARES_INTERNET, y=RET_SEC))
+scatter3 = base3 + geom_point(colour="purple")
+scatterText3 = scatter3 + geom_text_repel(aes(label=PROVINCIA),size=3)+labs(x="Hogares con acceso a Internet", 
+       y="% de retirados en educación secundaria")+ggtitle("Correlación entre % de retirados en educación secundaria y n°de hogares con acceso a Internet")
+scatterText3 + scale_x_continuous(limits = c(0, 250000))
+```
+
+### ALUM_MATRIC_SEC
+
+```{r}
+base4=ggplot(data=data, aes(x=ALUM_MATRIC_SEC, y=RET_SEC))
+scatter4 = base4 + geom_point(colour="orange")
+scatterText4 = scatter4 + geom_text_repel(aes(label=PROVINCIA),size=3)+labs(x="Numero de alumnos matriculados en el nivel secundario", 
+       y="% de retirados en educación secundaria")+ggtitle("Correlación entre % de retirados en educación secundaria y n°de alumnos matriculados en el nivel secundario")
+scatterText4
+```
+
+Column {data-width=200} {.tabset}
+-----------------------------------------------------------------------
+
+### Total de casos atendidos en la Defensoría Municipal del Niño y el Adolescente CASOS_DEFENSORIAMUNI
+
+```{r}
+TF2=summary(data$CASOS_DEFENSORIAMUNI)
+TF2
+```
+```{r}
+cor.test(data$RET_SEC, data$CASOS_DEFENSORIAMUNI, method = c("spearman"))
+```
+Este test Spearman nos indica que la correlación entre ambas variables es estadísticamente significativa a un intervalo de confianza del 95%, dado que, el p-value (0.089) es menor a 0.5. Además, el coeficiente (-0.12) nos indica que existe una correlación inversa de magnitud pequeña entre las variables.
+
+### Pobreza total: Número de habitantes en situación de pobreza - HABIT_EN_POBREZA 
+
+```{r}
+TF3=summary(data$HABIT_EN_POBREZA)
+TF3
+```
+```{r}
+cor.test(data$RET_SEC, data$HABIT_EN_POBREZA, method = c("spearman"))
+```
+Este test Spearman nos indica que la correlación entre ambas variables es estadísticamente significativa a un intervalo de confianza del 95%, dado que, el p-value (0.016) es menor a 0.5. Además, el coeficiente (0.17) nos indica que existe una correlación directa de magnitud pequeña entre las variables.
+
+### HOGARES_INTERNET
+
+```{r}
+TF4=summary(data$HOGARES_INTERNET)
+TF4
+```
+```{r}
+cor.test(data$RET_SEC, data$HOGARES_INTERNET, method = c("spearman"))
+```
+Este test Spearman nos indica que la correlación entre ambas variables es estadísticamente significativa a un intervalo de confianza del 95%, dado que, el p-value (0.004) es menor a 0.5. Además, el coeficiente (-0.20) nos indica que existe una correlación indirecta de magnitud pequeña entre las variables.
+
+### ALUM_MATRIC_SEC
+
+```{r}
+TF5=summary(data$ALUM_MATRIC_SEC)
+TF5
+```
+```{r}
+cor.test(data$RET_SEC, data$ALUM_MATRIC_SEC, method = c("spearman"))
+```
+Este test Spearman nos indica que la correlación entre ambas variables no es estadísticamente significativa a un intervalo de confianza del 95%, dado que, el p-value (0.917) es mayor a 0.5. Además, el coeficiente (-0.007) nos indica que existe una correlación indirecta de magnitud pequeña entre las variables.
+
+
+
+4. Regresiones {data-icon="fa-signal"}
+===================================== 
+
+Column {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+
+### H1
+
+```{r}
+modelo1=formula(RET_SEC~CASOS_DEFENSORIAMUNI)
+reg1=lm(modelo1,data=data)
+library(modelsummary)
+model1=list('apropiacion (I)'=reg1)
+modelsummary(model1, title = "Regresion: modelo 1",
+             stars = TRUE,
+             output = "kableExtra")
+```
+
+
+
+
+### H2
+
+```{r}
+modelo2=formula(RET_SEC~CASOS_DEFENSORIAMUNI+HABIT_EN_POBREZA)
+reg2=lm(modelo2,data=data)
+model2=list('apropiacion (II)'=reg2)
+modelsummary(model2, title = "Regresion: modelo 2",
+             stars = TRUE,
+             output = "kableExtra")
+```
+
+
+
+
+### H3
+
+```{r}
+modelo3=formula(RET_SEC~CASOS_DEFENSORIAMUNI+HABIT_EN_POBREZA+HOGARES_INTERNET)
+reg3=lm(modelo3,data=data)
+model3=list('apropiacion (III)'=reg3)
+modelsummary(model3, title = "Regresion: modelo 3",
+             stars = TRUE,
+             output = "kableExtra")
+```
+
+
+
+### H4
+
+```{r}
+modelo4=formula(RET_SEC~CASOS_DEFENSORIAMUNI+HABIT_EN_POBREZA+HOGARES_INTERNET+ALUM_MATRIC_SEC)
+reg4=lm(modelo4,data=data)
+model4=list('apropiacion (IV)'=reg4)
+modelsummary(model4, title = "Regresion: modelo 4",
+             stars = TRUE,
+             output = "kableExtra")
+```
+
+
+### Comparando modelos 1
+
+```{r}
+models=list('apropiacion (I)'=reg1,
+            'apropiacion (II)'=reg2,
+            'apropiacion (III)'=reg3,
+            'apropiacion (IV)'=reg4)
+modelsummary(models, title = "Resultados de todos los modelos",
+             stars = TRUE,
+             output = "kableExtra")
+```
+
+### Comparando modelos 2
+
+```{r}
+models=list('apropiacion (I)'=reg1,
+            'apropiacion (II)'=reg2,
+            'apropiacion (III)'=reg3,
+            'apropiacion (IV)'=reg4)
+modelsummary(models, title = "Resultados de todos los modelos",statistic = "conf.int",
+             stars = TRUE,
+             output = "kableExtra")
+```
+
+### Comparando modelos 3
+
+```{r}
+library(magrittr)
+library(knitr)
+
+tanova=anova(reg1,reg2,reg3,reg4)
+
+kable(tanova,
+      caption = "Tabla ANOVA para comparar modelos")%>%kableExtra::kable_styling(full_width = FALSE)
+```
+
+
+Column {data-width=500} {.tabset}
+-----------------------------------------------------------------------
+
+
+### H1
+
+El % de retirados en educación secundaria  responde al Total de casos atendidos en la Defensoría Municipal del Niño y el Adolescente 
+
+```{r}
+summary(reg1)
+```
+
+
+### H2
+
+El % de retirados en educación secundaria  responde al Total de casos atendidos en la Defensoría Municipal del Niño y el Adolescente, y al Número de habitantes en situación de pobreza  
+
+```{r}
+summary(reg2)
+```
+
+
+### H3
+
+El % de retirados en educación secundaria  responde al Total de casos atendidos en la Defensoría Municipal del Niño y el Adolescente, al Número de habitantes en situación de pobreza y a la cantidad de Hogares con acceso a Internet
+
+```{r}
+summary(reg3)
+```
+
+### H4
+
+El % de retirados en educación secundaria  responde al Total de casos atendidos en la Defensoría Municipal del Niño y el Adolescente, al Número de habitantes en situación de pobreza, a la cantidad de Hogares con acceso a Internet y al Numero de alumnos matriculados en el sistema educativo básico regular nivel secundario 
+
+```{r}
+summary(reg4)
+```
+
+5. Clusters {data-icon="fa-signal"}
+===================================== 
+
+Column {data-width=400} {.tabset}
+-----------------------------------------------------------------------
+
+```{r}
+dataClus=data[,c(3:7)]
+row.names(dataClus)=data$PROVINCIA
+```
+
+```{r}
+library(cluster)
+g.dist = daisy(dataClus, metric="gower")
+```
+
+### PAM
+
+```{r}
+library(factoextra)
+fviz_nbclust(dataClus, pam,diss=g.dist,method = "gap_stat",k.max = 10,verbose = F)
+```
+```{r}
+library(kableExtra)
+set.seed(123)
+res.pam=pam(g.dist,3,cluster.only = F)
+
+#nueva columna
+dataClus$pam=res.pam$cluster
+```
+
+### AGNES
+
+```{r}
+fviz_nbclust(dataClus, hcut,diss=g.dist,method = "gap_stat",k.max = 10,verbose = F,hc_func = "agnes")
+```
+```{r}
+set.seed(123)
+library(factoextra)
+
+res.agnes<- hcut(g.dist, k = 3,hc_func='agnes',hc_method = "ward.D")
+
+dataClus$agnes=res.agnes$cluster
+
+```
+
+
+### Diana
+
+```{r}
+fviz_nbclust(dataClus, hcut,diss=g.dist,method = "gap_stat",k.max = 10,verbose = F,hc_func = "diana")
+```
+
+```{r}
+set.seed(123)
+res.diana <- hcut(g.dist, k = 3,hc_func='diana')
+dataClus$diana=res.diana$cluster
+```
+
+
+Column {data-width=600} {.tabset}
+-----------------------------------------------------------------------
+
+
+### silhouettes de PAM
+
+```{r}
+fviz_silhouette(res.pam,print.summary = F)
+```
+
+
+### valores mal clusterizados 1
+
+
+```{r}
+silPAM=data.frame(res.pam$silinfo$widths)
+silPAM$country=row.names(silPAM)
+poorPAM=silPAM[silPAM$sil_width<0,'country']%>%sort()
+poorPAM
+```
+
+
+### dendograma de AGNES
+
+```{r}
+fviz_dend(res.agnes, cex = 0.7, horiz = T,main = "")
+```
+
+
+### silhouettes para AGNES
+
+```{r}
+fviz_silhouette(res.agnes,print.summary = F)
+```
+
+
+### valores mal clusterizados 2
+
+
+```{r}
+silAGNES=data.frame(res.agnes$silinfo$widths)
+silAGNES$country=row.names(silAGNES)
+poorAGNES=silAGNES[silAGNES$sil_width<0,'country']%>%sort()
+poorAGNES
+```
+
+
+
+### dendograma de DIANA
+
+```{r}
+fviz_dend(res.diana, cex = 0.7, horiz = T, main = "")
+```
+
+
+
+### silhouettes para DIANA
+
+```{r}
+fviz_silhouette(res.diana,print.summary = F)
+```
+
+
+### valores mal clusterizados 3
+
+
+```{r}
+silDIANA=data.frame(res.diana$silinfo$widths)
+silDIANA$country=row.names(silDIANA)
+poorDIANA=silDIANA[silDIANA$sil_width<0,'country']%>%sort()
+poorDIANA
+```
+
+### Verificando Etiqueta para DIANA
+
+```{r}
+aggregate(.~ diana, data=dataClus,mean)
+```
+
+
+
+
